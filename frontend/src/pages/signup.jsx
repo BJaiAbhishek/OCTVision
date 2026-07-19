@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { GoogleLogin } from '@react-oauth/google';
 import { z } from 'zod';
 import { useAuth } from '@/context/auth-context';
 import { Button } from '@/components/ui/button';
@@ -17,11 +18,26 @@ const schema = z.object({
 
 export default function SignupPage() {
   const navigate = useNavigate();
-  const { user, signup } = useAuth();
+  const { user, signup, googleLogin } = useAuth();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
+  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
+
+  async function handleGoogleSuccess(response) {
+    if (!response.credential) return toast.error('Google login failed');
+    setBusy(true);
+    try {
+      await googleLogin(response.credential);
+      toast.success('Account created with Google');
+      navigate('/home');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Google login failed');
+    } finally {
+      setBusy(false);
+    }
+  }
 
   useEffect(() => {
     if (user) {
@@ -81,6 +97,15 @@ export default function SignupPage() {
               {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Create account'}
             </Button>
           </form>
+
+          <div className="mt-4 flex items-center gap-3">
+            <span className="h-px flex-1 bg-border" />
+            <span className="text-xs uppercase tracking-[0.3em] text-muted-foreground">or</span>
+            <span className="h-px flex-1 bg-border" />
+          </div>
+          <div className="mt-4 flex justify-center">
+            {googleClientId ? <GoogleLogin onSuccess={handleGoogleSuccess} onError={() => toast.error('Google login failed')} /> : <p className="text-sm text-destructive">Google login is not configured.</p>}
+          </div>
 
           <p className="mt-6 text-center text-sm text-muted-foreground">
             Already have an account? <Link to="/login" className="text-primary font-medium hover:underline">Sign in</Link>

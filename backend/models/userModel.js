@@ -18,11 +18,17 @@ const userSchema = new Schema({
     },
     password:{
         type:String,
-        required: [true, 'Password is required']
-    }
+        required: function () { return !this.googleId; }
+    },
+    googleId: {
+        type: String,
+        unique: true,
+        sparse: true,
+    },
 }, { timestamps: true })
 
 userSchema.pre('save', async function () {
+    if (!this.password) return;
     if (!this.isModified("password")) return;
 
     this.password = await bcrypt.hash(this.password, 10);

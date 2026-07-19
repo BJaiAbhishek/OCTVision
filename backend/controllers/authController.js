@@ -1,5 +1,18 @@
 import { User } from "../models/userModel.js";
 import { hashPassword, comparePassword, signToken } from "../Utils/auth.js";
+import { OAuth2Client } from "google-auth-library";
+
+const googleClient = new OAuth2Client();
+
+function userResponse(user) {
+  return {
+    id: user._id,
+    name: user.name,
+    email: user.email,
+    createdAt: user.createdAt,
+    updatedAt: user.updatedAt,
+  };
+}
 
 export async function signup(req, res) {
   try {
@@ -26,13 +39,7 @@ export async function signup(req, res) {
 
     res.json({
       token,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        createdAt: user.createdAt,
-        updatedAt: user.updatedAt,
-      },
+      user: userResponse(user),
     });
   } catch (error) {
     console.error("Signup error:", error);
@@ -62,13 +69,7 @@ export async function login(req, res) {
 
     res.json({
       token,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        createdAt: user.createdAt,
-        updatedAt: user.updatedAt,
-      },
+      user: userResponse(user),
     });
   } catch (error) {
     console.error("Login error:", error);
@@ -84,16 +85,55 @@ export async function me(req, res) {
     }
 
     res.json({
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        createdAt: user.createdAt,
-        updatedAt: user.updatedAt,
-      },
+      user: userResponse(user),
     });
   } catch (error) {
     console.error("Me error:", error);
     res.status(500).json({ error: "Unable to fetch user" });
+  }
+}
+
+export async function googleLogin(req, res) {
+  try {
+    const { credential } = req.body;
+    const googleClientId = process.env.GOOGLE_CLIENT_ID;
+
+    if (!googleClientId) {
+      return res.status(500).json({ error: "Google login is not configured on the server" });
+    }
+    if (!credential) {
+      return res.status(400).json({ error: "Google credential is required" });
+    }
+
+    const ticket = await googleClient.verifyIdToken({
+      idToken: credential,
+      audience: googleClientId,
+    });
+    const payload = ticket.getPayload();
+
+    if (!payload?.sub || !payload.email || !payload.email_verified) {
+      return res.status(401).json({ error: "Google account email could not be verified" });
+    }
+
+    let user = await User.findOne({ googleId: payload.sub });
+    if (!user) {
+      user = await User.findOne({ email: payload.email.toLowerCase() });
+      if (user) {
+        user.googleId = payload.sub;
+        await user.save();
+      } else {
+        user = await User.create({
+          name: payload.name || payload.email.split("@")[0],
+          email: payload.email.toLowerCase(),
+          googleId: payload.sub,
+        });
+      }
+    }
+
+    const token = signToken({ id: user._id, email: user.email });
+    res.json({ token, user: userResponse(user) });
+  } catch (error) {
+    console.error("Google login error:", error.message);
+    res.status(401).json({ error: "Google sign-in could not be verified" });
   }
 }

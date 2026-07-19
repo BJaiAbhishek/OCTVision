@@ -1,14 +1,14 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { useGoogleLogin } from "@react-oauth/google";
+import { GoogleLogin } from "@react-oauth/google";
 import { z } from "zod";
 import { useAuth } from "@/context/auth-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Eye, Loader2, LogIn } from "lucide-react";
+import { Eye, Loader2 } from "lucide-react";
 
 const schema = z.object({
   email: z.string().trim().email("Enter a valid email"),
@@ -24,34 +24,18 @@ export default function LoginPage() {
 
   const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
 
-  let googleLoginAction = () => {
-    toast.error("Google login is not configured. Set VITE_GOOGLE_CLIENT_ID in your environment.");
-  };
-
-  if (googleClientId) {
-    googleLoginAction = useGoogleLogin({
-      onSuccess: async (tokenResponse) => {
-        if (!tokenResponse.access_token) {
-          return toast.error("Google login failed");
-        }
-
-        setBusy(true);
-        try {
-          await googleLogin(tokenResponse.access_token);
-          toast.success("Signed in with Google");
-          navigate("/home");
-        } catch (error) {
-          toast.error(error instanceof Error ? error.message : "Google login failed");
-        } finally {
-          setBusy(false);
-        }
-      },
-      onError: () => {
-        toast.error("Google login failed");
-      },
-      flow: "implicit",
-      scope: "openid profile email",
-    });
+  async function handleGoogleSuccess(response) {
+    if (!response.credential) return toast.error("Google login failed");
+    setBusy(true);
+    try {
+      await googleLogin(response.credential);
+      toast.success("Signed in with Google");
+      navigate("/home");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Google login failed");
+    } finally {
+      setBusy(false);
+    }
   }
 
   useEffect(() => {
@@ -77,10 +61,6 @@ export default function LoginPage() {
     } finally {
       setBusy(false);
     }
-  }
-
-  function handleGoogleLogin() {
-    googleLoginAction();
   }
 
   return (
@@ -143,10 +123,9 @@ export default function LoginPage() {
             <span className="h-px flex-1 bg-border" />
           </div>
 
-          <Button variant="outline" className="mt-4 w-full" onClick={handleGoogleLogin}>
-            <LogIn className="h-4 w-4" />
-            Continue with Google
-          </Button>
+          <div className="mt-4 flex justify-center">
+            {googleClientId ? <GoogleLogin onSuccess={handleGoogleSuccess} onError={() => toast.error("Google login failed")} /> : <p className="text-sm text-destructive">Google login is not configured.</p>}
+          </div>
 
           <p className="mt-6 text-center text-sm text-muted-foreground">
             New here?{" "}
