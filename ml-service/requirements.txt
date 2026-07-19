@@ -1,0 +1,9 @@
+fastapi>=0.115,<1.0
+uvicorn[standard]>=0.30,<1.0
+# This legacy .h5 model was saved with Keras 2 configuration. TensorFlow 2.16+
+# defaults to Keras 3 and cannot deserialize its initializer config.
+tensorflow==2.15.1
+pillow>=10.0,<12.0
+numpy>=1.26,<3.0
+python-multipart>=0.0.9,<1.0
+python-dotenv>=1.0,<2.0
