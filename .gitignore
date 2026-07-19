@@ -38,6 +38,4 @@ __pycache__/
 /uploads
 backend/uploads
 ml-service/.env
-ml-service/models/
 ml-service/.venv/
-*.h5
