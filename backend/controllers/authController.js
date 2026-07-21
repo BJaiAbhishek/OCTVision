@@ -93,13 +93,43 @@ export async function me(req, res) {
   }
 }
 
+export async function updatePassword(req, res) {
+  try {
+    const { newPassword } = req.body;
+    if (
+      !newPassword ||
+      typeof newPassword !== "string" ||
+      newPassword.trim().length < 6
+    ) {
+      return res
+        .status(400)
+        .json({ error: "New password must be at least 6 characters" });
+    }
+
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    user.password = newPassword.trim();
+    await user.save();
+
+    res.json({ status: "ok" });
+  } catch (error) {
+    console.error("Update password error:", error);
+    res.status(500).json({ error: "Unable to update password" });
+  }
+}
+
 export async function googleLogin(req, res) {
   try {
     const { credential } = req.body;
     const googleClientId = process.env.GOOGLE_CLIENT_ID;
 
     if (!googleClientId) {
-      return res.status(500).json({ error: "Google login is not configured on the server" });
+      return res
+        .status(500)
+        .json({ error: "Google login is not configured on the server" });
     }
     if (!credential) {
       return res.status(400).json({ error: "Google credential is required" });
@@ -112,7 +142,9 @@ export async function googleLogin(req, res) {
     const payload = ticket.getPayload();
 
     if (!payload?.sub || !payload.email || !payload.email_verified) {
-      return res.status(401).json({ error: "Google account email could not be verified" });
+      return res
+        .status(401)
+        .json({ error: "Google account email could not be verified" });
     }
 
     let user = await User.findOne({ googleId: payload.sub });

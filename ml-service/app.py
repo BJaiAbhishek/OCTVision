@@ -7,17 +7,11 @@ import tensorflow as tf
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from PIL import Image, UnidentifiedImageError
 from dotenv import load_dotenv
-from huggingface_hub import hf_hub_download
 
 BASE_DIR = Path(__file__).resolve().parent
 load_dotenv(BASE_DIR / ".env")
 
-# -------------------------------
-# Hugging Face Model Configuration
-# -------------------------------
-HF_REPO_ID = os.getenv("HF_REPO_ID", "chandra19404/octvision-model")
-HF_FILENAME = os.getenv("HF_FILENAME", "vggres_best.h5")
-HF_TOKEN = os.getenv("HF_TOKEN")  # Leave empty for public repositories
+MODEL_PATH_STR = os.getenv("MODEL_PATH", "models/vggres_best.h5")
 
 INPUT_SIZE = tuple(
     int(value.strip())
@@ -65,28 +59,20 @@ if len(INPUT_SIZE) != 2 or COLOR_MODE not in {"rgb", "grayscale"}:
         "MODEL_INPUT_SIZE must be width,height and MODEL_COLOR_MODE must be rgb or grayscale"
     )
 
+MODEL_PATH = Path(MODEL_PATH_STR)
+if not MODEL_PATH.is_absolute():
+    MODEL_PATH = BASE_DIR / MODEL_PATH
 
-def load_model_from_hf():
-    print("Downloading model from Hugging Face...")
-
-    model_path = hf_hub_download(
-        repo_id=HF_REPO_ID,
-        filename=HF_FILENAME,
-        token=HF_TOKEN,
+if not MODEL_PATH.exists():
+    raise RuntimeError(
+        f"Model file not found at {MODEL_PATH}. Set MODEL_PATH in .env to a valid .h5 file."
     )
 
-    print(f"Model downloaded to: {model_path}")
-
-    model = tf.keras.models.load_model(model_path, compile=False)
-
-    print("Model loaded successfully!")
-
-    return model, Path(model_path)
-
+print(f"Loading model from local path: {MODEL_PATH}")
+model = tf.keras.models.load_model(MODEL_PATH, compile=False)
+print("Model loaded successfully!")
 
 app = FastAPI(title="LumenX ML Service")
-
-model, MODEL_PATH = load_model_from_hf()
 
 
 def preprocess_image(contents: bytes) -> np.ndarray:

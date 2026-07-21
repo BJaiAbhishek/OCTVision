@@ -43,13 +43,7 @@ export default function App() {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/signup" element={<SignupPage />} />
       <Route path="/about" element={<AboutPage />} />
-      <Route
-        element={
-          <RequireAuth>
-            <AuthLayout />
-          </RequireAuth>
-        }
-      >
+      <Route element={ <RequireAuth> <AuthLayout /> </RequireAuth> } >
         <Route path="/home" element={<HomePage />} />
         <Route path="/history" element={<HistoryPage />} />
         <Route path="/diagnosis/:id" element={<DiagnosisPage />} />
